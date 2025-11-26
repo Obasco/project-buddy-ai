@@ -4,20 +4,27 @@ import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 
 const Layouts = () => {
-    // 1. Lift State Here
+    // State for Mobile Sidebar
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Lift State Here
     const [projects, setProjects] = useState([
-        { id: 1, title: "Marketing Campaign Q4", category: "Business", tags: ["Marketing"], progress: 75, status: "In Progress", lastEdited: "2 hours ago", deadline: "2023-12-01" },
-        { id: 2, title: "Thesis Research", category: "Academic", tags: ["Research"], progress: 30, status: "In Progress", lastEdited: "1 day ago", deadline: "2024-01-15" }
+        // { id: 1, title: "Marketing Campaign Q4", category: "Business", tags: ["Marketing"], progress: 75, status: "In Progress", lastEdited: "2 hours ago", deadline: "2023-12-01" },
     ]);
 
-    // 2. Define Handler Here
     const addProject = (newProjectData) => {
+        const now = new Date();
+        const formattedTime = now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+
         const newProject = {
             id: projects.length + 1,
             ...newProjectData,
-            progress: 0,
-            status: "Not started",
-            lastEdited: "Just now",
+            lastEdited: "Just now", 
+            timestamp: formattedTime,
             tags: [newProjectData.category],
             type: newProjectData.category
         };
@@ -25,12 +32,24 @@ const Layouts = () => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50">
-            <Sidebar />
-            <div className="flex-1 flex flex-col overflow-hidden relative">
-                <Navbar />
-                <main className="flex-1 overflow-y-auto p-8">
-                    {/* 3. Pass data to children via context */}
+        <div className="flex h-screen bg-gray-50 overflow-hidden">
+            
+            {/* Mobile Overlay (Click to close sidebar) */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar - Pass props for responsive behavior */}
+            <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+            <div className="flex-1 flex flex-col h-full w-full relative transition-all duration-300">
+                {/* Navbar - Pass toggle function */}
+                <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
+
+                <main className="flex-1 overflow-y-auto p-4 md:p-8">
                     <Outlet context={{ projects, addProject }} /> 
                 </main>
             </div>

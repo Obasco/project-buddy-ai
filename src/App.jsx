@@ -8,6 +8,7 @@ import Memory from './pages/Memory';
 import NewProject from './pages/NewProject';
 import Templates from './pages/Templates';
 import ProjectsPage from './pages/ProjectsPage';
+import ProjectResult from './pages/ProjectResult';
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
           <Route path='new-project' element={<NewProject/>}/>
           <Route path='templates' element={<Templates/>}/>
           <Route path='projects-page' element={<ProjectsPage/>}/>
+          <Route path="project-result" element={<ProjectResult />} />
         </Route>
       </Routes>
     </BrowserRouter>

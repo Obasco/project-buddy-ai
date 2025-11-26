@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate, Link, useOutletContext } from 'react-router-dom'; // 1. Import useOutletContext
-import { ArrowLeft, Calendar, Layout, Type } from 'lucide-react';
+import { useNavigate, Link, useOutletContext } from 'react-router-dom';
+import { ArrowLeft, Calendar, Layout, Type, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
-const NewProject = () => { // 2. Remove 'onAddProject' prop
-  // 3. Get the function from Layout context
-  const { addProject } = useOutletContext(); 
+const NewProject = () => {
+  const context = useOutletContext();
+  const addProject = context?.addProject || (() => console.error("addProject function missing in Context"));
   
   const navigate = useNavigate();
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
     title: '',
     category: 'Business',
@@ -14,21 +18,100 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
     deadline: ''
   });
 
+  // ✅ YOUR COHERE API KEY
+  const COHERE_API_KEY = 'N2mvsti4PTxo1MWiPAySpIJVk1oTKTLJ3CGfzFZN'; 
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const generateWithCohere = async (title, description) => {
+    const url = 'https://api.cohere.ai/v1/chat';
+
+    // ✅ UPDATED PROMPT: Acts as a flexible assistant (History, Plan, or Explanation)
+    const prompt = `You are a helpful and intelligent AI assistant.
+    The user wants information on the topic: "${title}".
+    User's detailed request: "${description}".
+
+    Instructions:
+    1. If the user asks for history, write a comprehensive history.
+    2. If the user asks for a project plan, write a plan.
+    3. If the user asks for an explanation, explain it clearly.
+    
+    Directly answer the user's request found in the description. Format the output in clean Markdown.`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${COHERE_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-Client-Name': 'ReactApp'
+        },
+        body: JSON.stringify({
+          message: prompt,
+          // ✅ MODEL: command-a-03-2025
+          model: "command-a-03-2025", 
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `Cohere API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.text; 
+
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 4. Use the function from context
-    addProject(formData); 
-    navigate('/');
+    setIsGenerating(true);
+    setError('');
+
+    try {
+      if (!COHERE_API_KEY) {
+        throw new Error('Cohere API Key is missing.');
+      }
+
+      // 1. Call Cohere AI
+      const generatedContent = await generateWithCohere(formData.title, formData.description);
+
+      // 2. Create Final Project Object
+      const finalProjectData = {
+        id: Date.now(),
+        ...formData,
+        content: generatedContent, // The AI text
+        aiGenerated: true,
+        progress: 0,
+        status: "Not started",
+        lastEdited: "Just now",
+        tags: [formData.category]
+      };
+
+      // 3. Save to Global State (App.jsx)
+      addProject(finalProjectData);
+
+      // 4. Navigate to Result Page and show the answer
+      navigate('/project-result', { state: { project: finalProjectData } });
+
+    } catch (err) {
+      setError(err.message || 'Failed to generate content. Please check your internet connection.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
     <div className="min-h-screen py-10 px-4 flex items-center justify-center">
       <div className="w-full max-w-2xl">
-        
+
         {/* Back Navigation */}
         <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors">
           <ArrowLeft size={16} className="mr-2" />
@@ -38,15 +121,28 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
         {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 md:p-10">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Create New Project</h1>
-            <p className="text-gray-500 mt-2">Fill in the details below to initialize a new workflow.</p>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">Create New Project</h1>
+              <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                <Sparkles size={12} /> Powered by Cohere
+              </span>
+            </div>
+            <p className="text-gray-500">Fill in the details. The AI will generate the content you need.</p>
           </div>
 
+          {/* Error Message Display */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center text-sm">
+              <AlertCircle size={18} className="mr-2 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {/* Title Input */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Project Title</label>
+              <label className="block text-sm font-semibold text-gray-700">Project/Topic Title</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Type size={18} className="text-gray-400" />
@@ -57,7 +153,7 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
                   required
                   value={formData.title}
                   onChange={handleChange}
-                  placeholder="e.g. Q4 Marketing Strategy"
+                  placeholder="e.g. History of Nigeria"
                   className="w-full pl-11 pr-4 py-3 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition-all duration-200 outline-none text-gray-900 placeholder-gray-400"
                 />
               </div>
@@ -78,8 +174,8 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
                 >
                   <option value="Business">Business</option>
                   <option value="Academic">Academic</option>
+                  <option value="Personal">Personal</option>
                 </select>
-                {/* Custom Chevron */}
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                   <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -89,7 +185,7 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
             </div>
 
             {/* Deadline Input */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">Deadline</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -104,18 +200,18 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
                   className="w-full pl-11 pr-4 py-3 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition-all duration-200 outline-none text-gray-900"
                 />
               </div>
-            </div>
+            </div> */}
 
             {/* Description Input */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Description</label>
+              <label className="block text-sm font-semibold text-gray-700">Description (Prompt)</label>
               <textarea
                 name="description"
                 rows="4"
                 required
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Briefly describe the goals of this project..."
+                placeholder="E.g. Write a comprehensive history of Nigeria from pre-colonial times to independence..."
                 className="w-full px-4 py-3 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition-all duration-200 outline-none text-gray-900 placeholder-gray-400 resize-none"
               ></textarea>
             </div>
@@ -124,9 +220,23 @@ const NewProject = () => { // 2. Remove 'onAddProject' prop
             <div className="pt-4">
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transform hover:-translate-y-0.5 transition-all duration-200"
+                disabled={isGenerating}
+                className={`w-full flex items-center justify-center font-bold py-3.5 rounded-xl shadow-lg transition-all duration-200 ${isGenerating
+                    ? 'bg-purple-400 cursor-not-allowed text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-600/30 transform hover:-translate-y-0.5'
+                  }`}
               >
-                Create Project
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    Asking Cohere...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2" size={20} />
+                    Generate Content
+                  </>
+                )}
               </button>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useOutletContext } from 'react-router-dom'; // 1. Import useOutletContext
+import { Link, useOutletContext } from 'react-router-dom';
 import { 
   Plus, 
   MoreHorizontal, 
@@ -9,8 +9,7 @@ import {
   ArrowRight 
 } from 'lucide-react';
 
-const ActiveProjects = () => { // 2. Remove 'projects' from props
-  // 3. Retrieve projects from the Layout context
+const ActiveProjects = () => {
   const { projects } = useOutletContext(); 
 
   const [activeTab, setActiveTab] = useState('All Projects');
@@ -88,7 +87,7 @@ const ActiveProjects = () => { // 2. Remove 'projects' from props
 
               {/* Tags */}
               <div className="flex flex-wrap gap-2 mb-6">
-                {project.tags.map((tag, index) => (
+                {project.tags && project.tags.map((tag, index) => (
                   <span key={index} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
                     {tag}
                   </span>
@@ -119,10 +118,17 @@ const ActiveProjects = () => { // 2. Remove 'projects' from props
                   <Clock size={14} className="mr-1" />
                   {project.lastEdited}
                 </div>
-                <button className="group flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+
+                {/* ✅ UPDATED LINK: Navigate to Result Page with Project Data */}
+                <Link 
+                  to="/project-result" 
+                  state={{ project: project }}
+                  className="group flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                >
                   Continue
                   <ArrowRight size={16} className="ml-1 transform group-hover:translate-x-1 transition-transform" />
-                </button>
+                </Link>
+                
               </div>
             </div>
           </div>
