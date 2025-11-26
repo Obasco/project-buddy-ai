@@ -3,6 +3,7 @@ import { useNavigate, Link, useOutletContext } from 'react-router-dom';
 import { ArrowLeft, Calendar, Layout, Type, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
 const NewProject = () => {
+  // Defensive check: Ensure addProject exists in the context
   const context = useOutletContext();
   const addProject = context?.addProject || (() => console.error("addProject function missing in Context"));
   
@@ -28,17 +29,22 @@ const NewProject = () => {
   const generateWithCohere = async (title, description) => {
     const url = 'https://api.cohere.ai/v1/chat';
 
-    // ✅ UPDATED PROMPT: Acts as a flexible assistant (History, Plan, or Explanation)
-    const prompt = `You are a helpful and intelligent AI assistant.
-    The user wants information on the topic: "${title}".
-    User's detailed request: "${description}".
+    // ✅ UPDATED PROMPT: STRICT "NO MARKDOWN" RULES
+    const prompt = `
+    You are a university student submitting an assignment.
+    Topic: "${title}"
+    Details: "${description}"
 
     Instructions:
-    1. If the user asks for history, write a comprehensive history.
-    2. If the user asks for a project plan, write a plan.
-    3. If the user asks for an explanation, explain it clearly.
+    1. Write a high-quality, formal academic response suitable for a lecturer to grade.
+    2. **CRITICAL:** Do NOT use Markdown symbols (like #, *, -, or >). 
+    3. Do NOT use bolding or italics syntax.
+    4. Write in clear paragraphs. Use standard spacing to separate sections.
+    5. If listing items, use numbers (1., 2.) or letters (a., b.) followed by a period, not dashes or dots.
+    6. Make it look like a standard typed essay or report.
     
-    Directly answer the user's request found in the description. Format the output in clean Markdown.`;
+    Start writing the assignment immediately.
+    `;
 
     try {
       const response = await fetch(url, {
@@ -50,7 +56,6 @@ const NewProject = () => {
         },
         body: JSON.stringify({
           message: prompt,
-          // ✅ MODEL: command-a-03-2025
           model: "command-a-03-2025", 
           temperature: 0.3
         })
@@ -127,7 +132,7 @@ const NewProject = () => {
                 <Sparkles size={12} /> Powered by Cohere
               </span>
             </div>
-            <p className="text-gray-500">Fill in the details. The AI will generate the content you need.</p>
+            <p className="text-gray-500">Fill in the details. The AI will write your assignment for you.</p>
           </div>
 
           {/* Error Message Display */}
@@ -211,7 +216,7 @@ const NewProject = () => {
                 required
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="E.g. Write a comprehensive history of Nigeria from pre-colonial times to independence..."
+                placeholder="E.g. Write a comprehensive history of Nigeria..."
                 className="w-full px-4 py-3 bg-gray-100 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition-all duration-200 outline-none text-gray-900 placeholder-gray-400 resize-none"
               ></textarea>
             </div>
@@ -234,7 +239,7 @@ const NewProject = () => {
                 ) : (
                   <>
                     <Sparkles className="mr-2" size={20} />
-                    Generate Content
+                    Generate & Create Project
                   </>
                 )}
               </button>
